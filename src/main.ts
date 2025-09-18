@@ -10,8 +10,6 @@ import { Vec3 } from 'ts-gl-matrix';
 import { ShaderLoader } from './Engine/loaders/ShaderLoader';
 import { ModelLoader } from './Engine/loaders/ModelLoader';
 
-
-
 export function StartEngine(canvas: HTMLCanvasElement) {
 
     console.log("Starting engine...")

@@ -6,14 +6,14 @@ export class Transform implements Component {
     private rotation: Quat = new Quat(0, 0, 0, 1);
     private scale: Vec3 = new Vec3(1, 1, 1);
 
-    private parent: Transform | null = null;
-    private children: Transform[] = [];
+    // private parent: Transform | null = null;
+    // private children: Transform[] = [];
 
 
-    constructor(parent?: Transform) {
-        if (parent != undefined) {
-            this.setParent(parent);
-        }
+    constructor(/*parent?: Transform*/) {
+        // if (parent != undefined) {
+        //     this.setParent(parent);
+        // }
     }
     // --- Setters ---
     setPosition(position: Vec3) {
@@ -70,37 +70,62 @@ export class Transform implements Component {
     }
 
     // --- Hierarchy ---
-    setParent(parent: Transform | null): void {
-        if (this.parent) {
-            const idx = this.parent.children.indexOf(this);
-            if (idx !== -1) this.parent.children.splice(idx, 1);
-        }
+    // setParent(parent: Transform | null): void {
+    //     if (this.parent) {
+    //         const idx = this.parent.children.indexOf(this);
+    //         if (idx !== -1) this.parent.children.splice(idx, 1);
+    //     }
 
-        this.parent = parent;
-        if (parent) parent.children.push(this);
-    }
+    //     this.parent = parent;
+    //     if (parent) parent.children.push(this);
+    // }
 
-    addChild(child: Transform): void {
-        child.setParent(this);
-    }
+    // addChild(child: Transform): void {
+    //     child.setParent(this);
+    // }
 
-    removeChild(child: Transform): void {
-        child.setParent(null);
-    }
+    // removeChild(child: Transform): void {
+    //     child.setParent(null);
+    // }
 
     // --- Matrices ---
+
+    lookAt(target: Vec3, up: Vec3 = new Vec3(0, 1, 0)) {
+        // Direction de la cible
+        const dir = new Vec3();
+        Vec3.subtract(dir, target, this.position);
+        Vec3.normalize(dir, dir);
+
+        // Calcul de la matrice lookAt
+        const mat = new Mat4();
+        Mat4.targetTo(mat, this.position, target, up);
+
+        // Extraire la rotation de la matrice
+        const rot = new Quat();
+        Mat4.getRotation(rot, mat);
+        this.rotation = rot;
+    }
     getLocalMatrix(): Mat4 {
         const m = new Mat4();
         Mat4.fromRotationTranslationScale(m, this.rotation, this.position, this.scale);
         return m;
     }
 
-    getGlobalMatrix(): Mat4 {
-        const local = this.getLocalMatrix();
-        if (this.parent) {
-            const parentGlobal = this.parent.getGlobalMatrix();
-            return Mat4.multiply(new Mat4(), parentGlobal, local) as Mat4;
-        }
-        return local;
+    getViewMatrix(): Mat4 {
+        const view = new Mat4();
+
+        // On calcule la rotation inverse
+        const invRot = new Quat();
+        Quat.invert(invRot, this.rotation);
+
+        // On calcule la position inverse (après rotation inverse)
+        const invPos = new Vec3();
+        Vec3.negate(invPos, this.position);
+        Vec3.transformQuat(invPos, invPos, invRot);
+
+        // Construire la viewMatrix
+        Mat4.fromRotationTranslation(view, invRot, invPos);
+
+        return view;
     }
 }

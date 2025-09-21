@@ -1,3 +1,4 @@
+import type { ModelGL } from "../loaders/ModelLoader";
 import { ComponentManager } from "./Component";
 import { Camera } from "./components/Camera";
 import { Light } from "./components/Light";
@@ -18,16 +19,9 @@ export class ECS {
         this.systems = new SystemManager();
     }
 
-    private root: Entity | undefined = undefined;
-
-    setRoot(root: Entity) {
-        this.root = root;
-    }
-
     createEntity(): number {
         const e = this.entities.create();
-        let parent = this.root == undefined ? undefined : this.components.get(this.root, Transform);
-        this.components.add(e, new Transform(parent));
+        this.components.add(e, new Transform());
         return e;
     }
     createCamera(): number {
@@ -42,9 +36,9 @@ export class ECS {
         return e;
     }
 
-    createMesh(geometry : {vao: WebGLVertexArrayObject, vertexCount : number}, material: Material): number {
+    createMesh(geometry : ModelGL, material: Material): number {
         const e = this.createEntity();
-        this.components.add(e, new Mesh(geometry.vao, geometry.vertexCount));
+        this.components.add(e, new Mesh(geometry));
         this.components.add(e, material);
         return e;
     }

@@ -1,4 +1,6 @@
+
 import { ComponentManager } from "./Component";
+
 
 export abstract class System {
   abstract update(dt: number, components: ComponentManager): void;

@@ -1,11 +1,18 @@
+import type { ModelGL } from "../../loaders/ModelLoader";
 import type { Component } from "../Component";
 
 export class Mesh implements Component {
-  vao: WebGLVertexArrayObject | null = null;
-  vertexCount: number = 0;
+  private modelGL: ModelGL;
 
-  constructor(vao: WebGLVertexArrayObject | null = null, vertexCount: number = 0) {
-    this.vao = vao;
-    this.vertexCount = vertexCount;
+  constructor(modelGL: ModelGL) {
+    this.modelGL = modelGL;
+  }
+
+  public getVAO() {
+    return this.modelGL.vao;
+  }
+
+  public getVertexCount() {
+    return this.modelGL.vertexCount;
   }
 }

@@ -1,33 +1,43 @@
-import './style.css'
 
 import { Scene } from './Engine/core/Scene';
 import { Engine } from './Engine/core/Engine';
-import { Camera } from './Engine/ECS/components/Camera';
 import { ShaderProgram } from './Engine/rendering/ShaderProgram';
 import { Material } from './Engine/ECS/components/Material';
 import { Transform } from './Engine/ECS/components/Transform';
 import { Vec3 } from 'ts-gl-matrix';
 import { ShaderLoader } from './Engine/loaders/ShaderLoader';
 import { ModelLoader } from './Engine/loaders/ModelLoader';
+import { RenderSystem } from './Engine/ECS/systems/RenderSystem';
 
 export function StartEngine(canvas: HTMLCanvasElement) {
 
-    console.log("Starting engine...")
+    console.log("Initializing Engine...")
     const engine = new Engine(canvas);
-    const scene = new Scene();
-    engine.setScene(scene);
 
-    const cameraEntity = scene.ecs.createCamera();
-    scene.setMainCamera(scene.ecs.components.get(cameraEntity, Camera)!);
+    console.log("Initializing Scene...")
+    const scene = new Scene();
 
     const shader = new ShaderProgram(engine.glContext.gl, ShaderLoader.stdVertexShader(), ShaderLoader.stdFragmentShader());
+    const cube = scene.createMesh(ModelLoader.generateCube(engine.glContext.gl, 1.5), new Material(shader));
 
-    const cube = scene.ecs.createMesh(ModelLoader.generateTriangle(engine.glContext.gl), new Material(shader));
-    scene.ecs.components.get(cube, Transform)!.setPosition(new Vec3(0, 0, 0));
+    scene.getComponent(cube, Transform)!.setPosition(new Vec3(0,0,0));
 
+    const camera = scene.createCamera();
+
+    scene.setActiveCamera(camera);
+    const camTransform = scene.getComponent(camera, Transform)!;
+    camTransform.setPosition(new Vec3(2, 2, 2));
+    camTransform.lookAt(new Vec3(0, 0, 0));
+
+    scene.addSystem(new RenderSystem(engine));
+
+    engine.setScene(scene);
+    console.log("Start engine...")
     engine.start();
+    console.log("Engine started.")
+
 }
 
-// let canvas = document.querySelector("#glCanvas");
-
-// StartEngine(canvas!);
+let canvas = document.querySelector("#glCanvas");
+console.log(canvas);
+StartEngine(canvas as HTMLCanvasElement);

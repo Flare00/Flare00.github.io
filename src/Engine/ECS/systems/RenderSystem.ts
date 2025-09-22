@@ -42,6 +42,7 @@ export class RenderSystem extends System {
             material.shader.setUniform("u_proj", projMatrix);
             material.shader.setUniform("u_view", viewMatrix);
             material.shader.setUniform("u_model", transform.getLocalMatrix());
+            material.shader.setUniform("u_cameraPos", camTransform.getPosition());
 
             // Uniforms custom
             material.applyUniforms();

@@ -1,12 +1,16 @@
+import type { ShaderData } from "../loaders/ShaderLoader";
+
 export class ShaderProgram {
     private gl: WebGL2RenderingContext;
     private program: WebGLProgram;
     private uniformLocations: Map<string, WebGLUniformLocation> = new Map();
+    private pendingUniforms: Map<string, any> = new Map();
+    private dirtyUniforms: Set<string> = new Set();
 
-    constructor(gl: WebGL2RenderingContext, vsSource: string, fsSource: string) {
+    constructor(gl: WebGL2RenderingContext, shader: ShaderData) {
         this.gl = gl;
-        const vertexShader = this.compile(gl.VERTEX_SHADER, vsSource);
-        const fragmentShader = this.compile(gl.FRAGMENT_SHADER, fsSource);
+        const vertexShader = this.compile(gl.VERTEX_SHADER, shader.vertexShader);
+        const fragmentShader = this.compile(gl.FRAGMENT_SHADER, shader.fragmentShader);
 
         const program = gl.createProgram();
         if (!program) throw new Error("Impossible de créer le programme WebGL.");
@@ -28,6 +32,11 @@ export class ShaderProgram {
 
     use(): void {
         this.gl.useProgram(this.program);
+        // Appliquer tous les uniforms "dirty" (ou tous si on veut forcer)
+        for (const [name, value] of this.pendingUniforms.entries()) {
+            this.applyUniform(name, value);
+        }
+        this.dirtyUniforms.clear();
     }
 
     getUniformLocation(name: string): WebGLUniformLocation {
@@ -39,13 +48,31 @@ export class ShaderProgram {
         return loc;
     }
 
+
+    /**
+     * Stocke la valeur d'un uniform pour une application différée (au prochain use())
+     */
+    set(name: string, value: number | Int32Array | Float32Array | number[]): void {
+        this.pendingUniforms.set(name, value);
+        this.dirtyUniforms.add(name);
+    }
+
+    /**
+     * Applique immédiatement la valeur d'un uniform (le shader doit être actif)
+     */
     setUniform(name: string, value: number): void;
     setUniform(name: string, value: Int32Array): void;
     setUniform(name: string, value: Float32Array): void;
     setUniform(name: string, value: number[]): void;
     setUniform(name: string, value: any) {
-        const loc = this.getUniformLocation(name);
+        this.applyUniform(name, value);
+    }
 
+    /**
+     * Applique la valeur d'un uniform au shader actif
+     */
+    private applyUniform(name: string, value: any) {
+        const loc = this.getUniformLocation(name);
         // Map longueur du tableau -> fonction WebGL
         const map: Record<number, (loc: WebGLUniformLocation, v: any) => void> = {
             1: (l, v) => typeof v === "number" ? this.gl.uniform1f(l, v) : this.gl.uniform1iv(l, v),
@@ -55,7 +82,6 @@ export class ShaderProgram {
             9: (l, v) => this.gl.uniformMatrix3fv(l, false, v),
             16: (l, v) => this.gl.uniformMatrix4fv(l, false, v),
         };
-
         const length = typeof value === "number" ? 1 : value.length;
         map[length](loc, value);
     }

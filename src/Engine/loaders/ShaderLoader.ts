@@ -1,5 +1,30 @@
+export class ShaderData {
+    vertexShader: string;
+    fragmentShader: string;
+    geometryShader?: string;
+    tessControlShader?: string;
+    tessEvalShader?: string;
+
+    constructor(vertexShader: string, fragmentShader: string, geometryShader?: string, tessControlShader?: string, tessEvalShader?: string) {
+        this.vertexShader = vertexShader;
+        this.fragmentShader = fragmentShader;
+        this.geometryShader = geometryShader;
+        this.tessControlShader = tessControlShader;
+        this.tessEvalShader = tessEvalShader;
+    }
+}
+
 export class ShaderLoader {
-    static async LoadFromURL(url: string): Promise<string> {
+    /**
+     * Charge un shader depuis une URL (fichier unique) ou un dossier (plusieurs fichiers)
+     * Si url est un fichier, retourne le texte du shader.
+     * Si url est un dossier, retourne un objet { vertexShader, fragmentShader, ... }
+     * Les extensions reconnues : .vs (vertex), .fs (fragment), .gs (geometry), .ts (tess control), .tes (tess eval)
+     */
+    /**
+     * Charge un shader depuis un fichier unique (retourne le texte du shader)
+     */
+    static async LoadShaderFile(url: string): Promise<string> {
         const response = await fetch(url);
         if (!response.ok) {
             throw new Error(`Erreur lors du chargement du shader: ${url}`);
@@ -7,73 +32,64 @@ export class ShaderLoader {
         return await response.text();
     }
 
-    static pbrVertexShader(): string {
-        return `#version 300 es
-        precision highp float;
+    /**
+     * Charge un dossier de shaders (retourne un ShaderData)
+     * Le serveur doit retourner un JSON listant les fichiers du dossier
+     * Ex: GET url => ["shader.vs", "shader.fs", ...]
+     */
+    static async LoadShaderFolder(url: string): Promise<ShaderData> {
 
-        in vec3 a_position;
-        in vec3 a_normal;
-        in vec2 a_uv;
-
-        uniform mat4 u_proj;
-        uniform mat4 u_view;
-        uniform mat4 u_model;
-
-        out vec3 v_worldPos;
-        out vec3 v_normal;
-        out vec2 v_uv;
-
-        void main() {
-            vec4 worldPos = u_model * vec4(a_position, 1.0);
-            v_worldPos = worldPos.xyz;
-            v_normal = mat3(u_model) * a_normal;
-            v_uv = a_uv;
-            gl_Position = u_proj * u_view * worldPos;
+        if(!url.endsWith("/")) {
+            url += "/";
         }
-        `;
+        console.log("Try to load shaders from folder",url)
+
+        // On suppose que url finit par / et que le nom du dossier est le nom des fichiers
+        // Ex: /shaders/monshader/ => /shaders/monshader/monshader.vs, etc.
+        const folder = url.endsWith("/") ? url : url + "/";
+        // Récupère le nom du dossier sans slash final
+        const parts = folder.split("/").filter(Boolean);
+        const baseName = parts[parts.length - 1];
+        const tryFiles = [
+            { ext: ".vs", key: "vertexShader" },
+            { ext: ".fs", key: "fragmentShader" },
+            { ext: ".gs", key: "geometryShader" },
+            { ext: ".ts", key: "tessControlShader" },
+            { ext: ".tes", key: "tessEvalShader" }
+        ];
+        let vertexShader = "";
+        let fragmentShader = "";
+        let geometryShader: string | undefined = undefined;
+        let tessControlShader: string | undefined = undefined;
+        let tessEvalShader: string | undefined = undefined;
+        await Promise.all(tryFiles.map(async ({ ext, key }) => {
+            const fileUrl = url + baseName + ext;
+
+            try {
+                const resp = await fetch(fileUrl);
+                if (resp.ok) {
+                    const src = await resp.text();
+                    switch (key) {
+                        case "vertexShader": vertexShader = src; break;
+                        case "fragmentShader": fragmentShader = src; break;
+                        case "geometryShader": geometryShader = src; break;
+                        case "tessControlShader": tessControlShader = src; break;
+                        case "tessEvalShader": tessEvalShader = src; break;
+                    }
+                }
+            } catch (e) {
+                // Ignore les erreurs pour les fichiers optionnels
+            }
+        }));
+        if (!vertexShader || !fragmentShader) {
+            throw new Error("Le dossier ne contient pas de vertexShader (.vs) ou fragmentShader (.fs)");
+        }
+        console.log("Loaded shaders from folder",url)
+        return new ShaderData(vertexShader, fragmentShader, geometryShader, tessControlShader, tessEvalShader);
     }
 
-    static pbrFragmentShader(): string {
-        return `#version 300 es
-        precision highp float;
-        out vec4 outColor;
-
-        in vec3 v_worldPos;
-        in vec3 v_normal;
-        in vec2 v_uv;
-
-        uniform vec3 u_cameraPos;
-        uniform vec3 u_lightDir;
-        uniform vec3 u_lightColor;
-        uniform vec3 u_albedo;
-        uniform float u_metallic;
-        uniform float u_roughness;
-
-        const float PI = 3.14159265359;
-
-        // Lambertian diffuse
-        vec3 diffuse(vec3 albedo) {
-            return albedo / PI;
-        }
-
-        void main() {
-            vec3 N = normalize(v_normal);
-            vec3 V = normalize(u_cameraPos - v_worldPos);
-            vec3 L = normalize(-u_lightDir);
-            vec3 H = normalize(V + L);
-
-            float NdotL = max(dot(N, L), 0.0);
-
-            vec3 color = diffuse(u_albedo) * u_lightColor * NdotL;
-
-            outColor = vec4(color, 1.0);
-        }
-        `;
-    }
-
-
-    static stdVertexShader(): string {
-        return `#version 300 es
+    static testShader(): ShaderData {
+        const vertexShader = `#version 300 es
         precision highp float;
 
         in vec3 a_position;
@@ -88,15 +104,13 @@ export class ShaderLoader {
             gl_Position = u_proj * u_view * worldPos;
         }
         `;
-    }
-
-    static stdFragmentShader(): string {
-        return `#version 300 es
+        const fragmentShader = `#version 300 es
         precision highp float;
         out vec4 outColor;
         void main() {
             outColor = vec4(1.0,0.0,0.0, 1.0);
         }
-    `;
+        `;
+        return new ShaderData(vertexShader, fragmentShader);
     }
 }

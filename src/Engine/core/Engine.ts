@@ -30,9 +30,4 @@ export class Engine {
     public setScene(scene: Scene) {
         this.scene = scene;
     }
-
-
-
-
-
 }

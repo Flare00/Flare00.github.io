@@ -1,15 +1,15 @@
-import { defineConfig } from 'vite';
-import { viteStaticCopy } from 'vite-plugin-static-copy';
+import { defineConfig } from "vite";
+import { resolve } from "path";
 
 export default defineConfig({
-  plugins: [
-    viteStaticCopy({
-      targets: [
-        {
-          src: 'dev.html',
-          dest: '.'
-        }
-      ]
-    })
-  ]
+  build: {
+    rollupOptions: {
+      input: {
+        main: resolve(__dirname, "index.html"),
+        dev: resolve(__dirname, "dev.html"),
+      },
+    },
+    outDir: "dist", // le dossier de sortie
+    emptyOutDir: true, // nettoie dist avant chaque build
+  },
 });

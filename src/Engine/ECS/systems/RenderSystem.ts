@@ -20,7 +20,7 @@ export class RenderSystem extends System {
         if (!this.engine.scene) return;
         const cameraEntity = this.engine.scene.getActiveCamera();
         if (!cameraEntity) { throw new Error("No active camera in the scene"); }
-        this.engine.glContext.clear(0, 0, 0, 1);
+        this.engine.glContext.clear(58/255, 22/255, 81/255, 1);
 
         const camera = components.get(cameraEntity, Camera)!;
         const camTransform = components.get(cameraEntity, Transform)!;

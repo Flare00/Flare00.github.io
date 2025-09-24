@@ -29,7 +29,7 @@ export class MainScene extends Scene {
         camTransform.setPosition(new Vec3(2, 2, 2));
         camTransform.lookAt(new Vec3(0, 0, 0));
 
-        this.addSystem(new RotateAround(camera, backpack, 5, 0, 2, 20))
+        this.addSystem(new RotateAround(camera, backpack, 10, 5, 2, 20))
 
         // this.addSystem((dt: number, components: ComponentManager) => {
         //     cubeTransform.rotate(dt * 0.5, "y");

@@ -23,6 +23,7 @@ export class GLContext {
     this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
     this.gl.enable(this.gl.CULL_FACE);
     this.gl.cullFace(this.gl.BACK);
+    this.gl.enable(this.gl.DEPTH_TEST);
 
     this.resizeCanvas();
     window.addEventListener("resize", this.resizeCanvas.bind(this));

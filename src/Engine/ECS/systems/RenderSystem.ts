@@ -3,6 +3,7 @@ import type { Scene } from "../../core/Scene";
 import type { ComponentManager } from "../Component";
 import { Camera } from "../components/Camera";
 import { Material } from "../components/Material";
+import { MaterialManager } from "../../core/MaterialManager";
 import { Mesh } from "../components/Mesh";
 import { Transform } from "../components/Transform";
 import { System } from "../System";
@@ -28,30 +29,46 @@ export class RenderSystem extends System {
         const viewMatrix = camTransform.getViewMatrix();
         const projMatrix = camera.getProjectionMatrix(this.engine.glContext.getAspectRatio());
 
+        // Batching: regrouper par signature de matériau (shader + uniforms + textures)
+        const byMatSig = new Map<string, Array<[any, any]>>();
         for (const [entity, mesh] of meshes) {
             const transform = components.get(entity, Transform);
             const material = components.get(entity, Material);
-
             if (!transform || !material) continue;
+            const sig = MaterialManager.getSignature(material);
+            if (!byMatSig.has(sig)) byMatSig.set(sig, []);
+            byMatSig.get(sig)!.push([entity, mesh]);
+        }
 
-            // TODO : Grouper les mesh par shader + material pour minimiser les changements d'état 
-            // Active shader
-            material.shader.use();
+        const gl = this.engine.glContext.gl;
+        for (const [sig, list] of byMatSig.entries()) {
+            const firstEntity = list[0][0];
+            const firstMat = components.get(firstEntity, Material)!;
+            const shaderProg = firstMat.shader;
 
-            // Uniforms standards
-            material.shader.setUniform("u_proj", projMatrix);
-            material.shader.setUniform("u_view", viewMatrix);
-            material.shader.setUniform("u_model", transform.getLocalMatrix());
-            material.shader.setUniform("u_cameraPos", camTransform.getPosition());
+            shaderProg.use();
+            // set global camera/proj uniforms once
+            shaderProg.setUniform("u_proj", projMatrix);
+            shaderProg.setUniform("u_view", viewMatrix);
+            shaderProg.setUniform("u_cameraPos", camTransform.getPosition());
 
-            // Uniforms custom
-            material.applyUniforms();
+            for (const [entity, mesh] of list) {
+                const transform = components.get(entity, Transform)!;
+                const material = components.get(entity, Material)!;
 
-            // Bind VAO + draw
-            if (mesh.getVAO()) {
-                this.engine.glContext.gl.bindVertexArray(mesh.getVAO());
-                this.engine.glContext.gl.drawElements(this.engine.glContext.gl.TRIANGLES, mesh.getVertexCount(), this.engine.glContext.gl.UNSIGNED_SHORT, 0);
-                this.engine.glContext.gl.bindVertexArray(null);
+                // per-instance model matrix
+                shaderProg.setUniform("u_model", transform.getLocalMatrix());
+
+                // Apply material (textures + custom uniforms)
+                material.applyTo(gl);
+
+                // Bind VAO + draw
+                if (mesh.getVAO()) {
+                    gl.bindVertexArray(mesh.getVAO());
+                    const idxType = mesh.getIndexType() || gl.UNSIGNED_SHORT;
+                    gl.drawElements(gl.TRIANGLES, mesh.getVertexCount(), idxType, 0);
+                    gl.bindVertexArray(null);
+                }
             }
         }
     }

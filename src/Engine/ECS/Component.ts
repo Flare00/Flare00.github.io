@@ -26,4 +26,25 @@ export class ComponentManager {
     const map = this.components.get(type.name);
     return map ? Array.from(map.entries()) as [Entity, T][] : [];
   }
+
+  /**
+   * Retourne tous les composants attachés à une entité : [typeName, component]
+   */
+  getComponentsForEntity(entity: Entity): [string, Component][] {
+    const res: [string, Component][] = [];
+    for (const [key, map] of this.components.entries()) {
+      const c = map.get(entity);
+      if (c) res.push([key, c]);
+    }
+    return res;
+  }
+
+  /**
+   * Supprime tous les composants d'une entité
+   */
+  removeAllComponents(entity: Entity): void {
+    for (const map of this.components.values()) {
+      map.delete(entity);
+    }
+  }
 }

@@ -36,10 +36,10 @@ export class ECS {
         return e;
     }
 
-    createMesh(geometry : ModelGL, material: Material): number {
+    createMesh(geometry: ModelGL, material: Material | null = null): number {
         const e = this.createEntity();
         this.components.add(e, new Mesh(geometry));
-        this.components.add(e, material);
+        if (material != null) this.components.add(e, material);
         return e;
     }
 }

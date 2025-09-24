@@ -29,7 +29,7 @@ export class Transform implements Component {
     }
 
     setScale(scale: Vec3) {
-        this.position = scale;
+        this.scale = scale;
     }
 
     // --- Getters ---
@@ -127,5 +127,26 @@ export class Transform implements Component {
         Mat4.fromRotationTranslation(view, invRot, invPos);
 
         return view;
+    }
+
+    rotate(angleRad: number, axis: "x" | "y" | "z" | Vec3) {
+        if(axis === "x") axis = new Vec3(1, 0, 0);
+        if(axis === "y") axis = new Vec3(0, 1, 0);
+        if(axis === "z") axis = new Vec3(0, 0, 1);
+        const q = new Quat();
+        Quat.setAxisAngle(q, axis, angleRad);
+        Quat.multiply(this.rotation, q, this.rotation);
+    }
+
+    rotateX(angleRad: number) {
+        this.rotate(angleRad, new Vec3(1, 0, 0));
+    }
+
+    rotateY(angleRad: number) {
+        this.rotate(angleRad, new Vec3(0, 1, 0));
+    }
+
+    rotateZ(angleRad: number) {
+        this.rotate(angleRad, new Vec3(0, 0, 1));
     }
 }

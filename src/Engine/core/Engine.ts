@@ -1,3 +1,4 @@
+import { RenderSystem } from "../ECS/systems/RenderSystem";
 import { GLContext } from "../rendering/GLContext";
 import type { Scene } from "./Scene";
 
@@ -7,6 +8,7 @@ export class Engine {
 
     constructor(canvas: HTMLCanvasElement) {
         this.glContext = new GLContext(canvas);
+        GLContext.currentGLContext = this.glContext;
     }
 
     start(): void {
@@ -26,8 +28,24 @@ export class Engine {
         requestAnimationFrame(loop);
     }
 
-
     public setScene(scene: Scene) {
         this.scene = scene;
     }
+
+    static async StartEngine(canvas: HTMLCanvasElement, scene: Scene): Promise<Engine> {
+        console.log("Initializing Engine...")
+        const engine = new Engine(canvas);
+
+        console.log("Initializing Scene...")
+        await scene.initialize();
+        scene.addSystem(new RenderSystem(engine));
+        console.log("Scene initialized...")
+
+        engine.setScene(scene);
+        console.log("Start engine...")
+        engine.start();
+        console.log("Engine started.")
+        return engine;
+    }
+
 }

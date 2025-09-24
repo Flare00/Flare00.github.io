@@ -1,4 +1,6 @@
 export class GLContext {
+  public static currentGLContext: GLContext | null = null;
+
   private canvas: HTMLCanvasElement;
   public gl: WebGL2RenderingContext;
 
@@ -56,4 +58,9 @@ export class GLContext {
   }
 
 
+  public static getGL(gl?: WebGL2RenderingContext | GLContext): WebGL2RenderingContext {
+    if (gl) return gl instanceof GLContext ? gl.gl : gl;
+    if (GLContext.currentGLContext) return GLContext.currentGLContext.gl;
+    throw new Error("No WebGL context available");
+  }
 }

@@ -1,9 +1,11 @@
 import { ECS } from "../ECS/ECS";
+import type { Engine } from "./Engine";
 import { Camera } from "../ECS/components/Camera";
 import type { Entity } from "../ECS/Entity";
-import type { Component } from "../ECS/Component";
-import type { ModelGL } from "../loaders/ModelLoader";
+import type { Component, ComponentManager } from "../ECS/Component";
+import { ModelGL, ModelGLExtended, ModelLoader } from "../loaders/ModelLoader";
 import type { System } from "../ECS/System";
+import { Material } from "../ECS/components/Material";
 
 export class Scene {
     public ecs: ECS;
@@ -15,6 +17,35 @@ export class Scene {
         this.name = name;
         this.active = true;
         this.ecs = new ECS();
+    }
+
+    // Runtime-provided initializer: a callback that can be set/cleared at runtime
+    // It will be invoked when `initialize()` is called, before the subclass hook.
+    private runtimeInitializer: ((scene: Scene) => Promise<void> | void) | null = null;
+
+    /**
+     * Protected hook for subclasses to override for scene-specific initialization.
+     * It's called by `initialize()` after any runtime-provided initializer.
+     * Can be async.
+     */
+    protected async onInitialize(): Promise<void> { }
+
+    public async initialize(): Promise<void> {
+        if (!this.active) return;
+
+        if (this.runtimeInitializer) {
+            await this.runtimeInitializer(this);
+        }
+
+        await this.onInitialize();
+    }
+
+    /**
+     * Set a runtime initializer callback. The callback receives the scene and may
+     * return a Promise to perform async setup.
+     */
+    public setInitializer(fn: ((scene: Scene) => Promise<void> | void) | null): void {
+        this.runtimeInitializer = fn;
     }
 
     update(dt: number): void {
@@ -52,14 +83,52 @@ export class Scene {
         return this.ecs.createLight(type);
     }
 
-    createMesh(geometry: ModelGL, material: any): Entity {
-        return this.ecs.createMesh(geometry, material);
+    createMesh(model: ModelGL | ModelGLExtended, material: Material | null = null): Entity {
+        let mod: ModelGL;
+        // Use a property check instead of instanceof, since ModelGLExtended is a type
+        if (model instanceof ModelGL) {
+            mod = model;
+        } else {
+            mod = model.model
+            if (!material && (model as ModelGLExtended).material)
+                material = (model as ModelGLExtended).material;
+        }
+
+        return this.ecs.createMesh(mod, material);
     }
 
-    destroyEntity(entity: Entity): void {
+    async createMeshFromURL(url: string, material?: Material): Promise<Entity | null> {
+        console.log("Loading model from URL:", url);
+        const model = await ModelLoader.LoadFromURL(url, !material);
+        console.log("Model exist :", model != null);
+        if (model == null) return null;
+        return this.createMesh(model, material);
+    }
+
+
+
+    destroyEntity(entity: Entity, engine?: Engine): void {
         if (entity === this.activeCamera) {
             this.activeCamera = null; // On supprime la caméra active
         }
+
+        // Attempt to call dispose on components that provide it (e.g. Mesh)
+        const comps = this.ecs.components.getAllOfType<any>((Object as any));
+        // The ComponentManager doesn't provide a direct API to enumerate per-entity components
+        // so rely on ComponentManager internal maps via getAllOfType when needed. Simpler approach:
+        try {
+            // iterate over all component types and try to dispose per-entity
+            for (const [typeName, map] of (this.ecs.components as any).components.entries()) {
+                const comp = map.get(entity);
+                if (comp && typeof comp.dispose === 'function') {
+                    try { comp.dispose(engine?.glContext?.gl); } catch (e) { console.warn('dispose failed for', typeName, e); }
+                }
+            }
+        } catch (e) {
+            // Fallback: ignore if internal shapes are different
+        }
+
+        this.ecs.components.removeAllComponents(entity);
         this.ecs.entities.destroy(entity);
     }
 
@@ -71,7 +140,11 @@ export class Scene {
         return this.ecs.components.getAllOfType(type) as [Entity, T][]
     }
 
-    addSystem(system: System): void {
-        this.ecs.systems.add(system);
+    /**
+     * Add a system. Accepts either a System instance or a plain function
+     * with signature (dt: number, components: ComponentManager) => void.
+     */
+    addSystem(system: System | ((dt: number, components: ComponentManager) => void)): void {
+        this.ecs.systems.add(system as any);
     }
 }

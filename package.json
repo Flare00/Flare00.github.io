@@ -6,14 +6,19 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d dist"
   },
   "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.1",
+    "gh-pages": "^6.3.0",
     "typescript": "~5.8.3",
     "vite": "^7.0.4",
     "vite-plugin-static-copy": "^3.1.2"
   },
   "dependencies": {
-    "ts-gl-matrix": "^4.0.3"
+    "ts-gl-matrix": "^4.0.3",
+    "vue": "^3.5.22"
   }
 }

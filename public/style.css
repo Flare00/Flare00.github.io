@@ -35,3 +35,20 @@ body {
 .bg-yellow {
   background-color: #CFD666;
 }
+
+.floating {
+    position: absolute;
+    top: 20px;
+    z-index: 9999;
+    max-width: 420px;
+    width: auto;
+    pointer-events: auto;
+}
+
+.floating-left {
+    left: 20px;
+}
+
+.floating-right {
+    right: 20px;
+}

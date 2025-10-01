@@ -1,4 +1,7 @@
+import { FunctionalComponent } from "vue";
 import type { Entity } from "./Entity";
+
+export type ComponentList = { [key: string]: (Component | FunctionalComponent) };
 
 export interface Component {
 }
@@ -30,11 +33,11 @@ export class ComponentManager {
   /**
    * Retourne tous les composants attachés à une entité : [typeName, component]
    */
-  getComponentsForEntity(entity: Entity): [string, Component][] {
-    const res: [string, Component][] = [];
+  getComponentsForEntity(entity: Entity): ComponentList {
+    const res: ComponentList = {};
     for (const [key, map] of this.components.entries()) {
       const c = map.get(entity);
-      if (c) res.push([key, c]);
+      if (c) res[key] = c;
     }
     return res;
   }

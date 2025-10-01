@@ -1,16 +1,17 @@
 <template>
-  <Inspector v-if="engine" class="floating" :engine="engine"></Inspector>
-  <canvas id="glCanvas" style="width: 100vw; height: 100vh;"></canvas>
+  <div class="h-screen overflow-hidden ">
+    <canvas id="glCanvas" class="w-full h-full"></canvas>
+    <EngineInterface v-if="engine" class="w-0 h-0" :engine="engine"></EngineInterface>
+  </div>
 </template>
 
 <script lang="ts" setup>
 import { onMounted, ref } from 'vue';
-import Inspector from '../Engine/ui/inspector/Inspector.vue';
 import { Engine } from '../Engine/core/Engine';
 import { MainScene } from '../MainScene';
+import EngineInterface from '../Engine/ui/EngineInterface.vue';
 
-const engine = ref<Engine | null>(null);
-
+const engine = ref<Engine>();
 async function start() {
   let canvas = document.querySelector("#glCanvas");
   engine.value = await Engine.StartEngine(canvas as HTMLCanvasElement, new MainScene());
@@ -30,15 +31,3 @@ onMounted(() => {
 });
 
 </script>
-
-<style scoped>
-.floating {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  z-index: 9999;
-  max-width: 420px;
-  width: auto;
-  pointer-events: auto;
-}
-</style>

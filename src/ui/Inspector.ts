@@ -4,6 +4,7 @@ import { Transform } from "../Engine/ECS/components/Transform";
 import { Camera } from "../Engine/ECS/components/Camera";
 import { Light } from "../Engine/ECS/components/Light";
 import { Material } from "../Engine/ECS/components/Material";
+import { Vec4 } from "ts-gl-matrix";
 
 // Lightweight DOM helper
 function el(tag: string, cls?: string, html?: string) {
@@ -29,7 +30,7 @@ export class Inspector {
       </div>
     `;
 
-  // inject controls: refresh and collapse toggle
+    // inject controls: refresh and collapse toggle
     const controls = this.root.querySelector<HTMLSpanElement>("#inspector-controls")!;
     const refreshBtn = document.createElement('button');
     refreshBtn.id = 'inspector-refresh';
@@ -64,7 +65,7 @@ export class Inspector {
     const entities: Entity[] = ecs.entities.getAll();
     for (const id of entities) {
       const card = el("div", "inspector-entity") as HTMLElement;
-  // expanded by default
+      // expanded by default
       const title = el("div", "inspector-entity-title collapsible") as HTMLElement;
       title.innerText = `Entity ${id}`;
       const body = el("div", "inspector-entity-body") as HTMLElement;
@@ -78,7 +79,7 @@ export class Inspector {
       const comps = ecs.components.getComponentsForEntity(id as number);
       for (const [typeName, comp] of comps) {
         const compEl = el("div", "inspector-component") as HTMLElement;
-  // expanded by default
+        // expanded by default
         const header = el("div", "inspector-component-header collapsible") as HTMLElement;
         header.innerText = typeName;
         const compBody = el("div", "inspector-component-body") as HTMLElement;
@@ -107,7 +108,7 @@ export class Inspector {
       }
 
       // actions
-  const actions = el("div", "inspector-entity-actions") as HTMLElement;
+      const actions = el("div", "inspector-entity-actions") as HTMLElement;
       const del = el("button", "inspector-btn", "Delete") as HTMLButtonElement;
       del.addEventListener("click", () => {
         ecs.removeAllComponents(id as number);
@@ -224,25 +225,25 @@ export class Inspector {
     }
     container.appendChild(uni);
 
-    // textures & fallbacks
+    // textures & per-texture fallbacks
     const texs = el("div", "inspector-subsection", "Textures / Fallbacks") as HTMLElement;
-    for (const [name, url] of Object.entries(m.textures)) {
+    for (const [name, entry] of Object.entries(m.textures)) {
       const row = el("div", "inspector-row") as HTMLElement;
       row.appendChild(el("div", "inspector-label", name));
-      const input = el("input") as HTMLInputElement; input.value = url;
+      const input = el("input") as HTMLInputElement; input.value = (entry && (entry as any).url) ? (entry as any).url : '';
       row.appendChild(input);
       const set = el("button", "inspector-small-btn", "Set URL") as HTMLButtonElement;
       set.addEventListener("click", () => { m.setTextureUniform(name, input.value); this.refresh(); });
       row.appendChild(set);
 
-      // fallback color
-      const col = m.fallbackColors[name] ?? undefined;
+      // fallback color (per-texture)
+      const col = (entry && (entry as any).fallback) ? (entry as any).fallback : undefined;
       const colorInput = el("input") as HTMLInputElement; colorInput.type = "color";
       if (col) colorInput.value = this.vec4ToHex(col);
       const setFb = el("button", "inspector-small-btn", "Set Fallback") as HTMLButtonElement;
       setFb.addEventListener("click", () => {
         const rgba = this.hexToVec4(colorInput.value);
-        m.setFallbackTexture(name, rgba);
+        m.setFallback(name, rgba);
         this.refresh();
       });
       row.appendChild(colorInput);
@@ -252,22 +253,7 @@ export class Inspector {
     }
     container.appendChild(texs);
 
-    // type fallbacks
-    const types = el("div", "inspector-subsection", "Type fallbacks") as HTMLElement;
-    const knownTypes = ["albedo","normal","metallic","roughness","ao"];
-    for (const t of knownTypes) {
-      const row = el("div", "inspector-row") as HTMLElement;
-      row.appendChild(el("div", "inspector-label", t));
-      const colorInput = el("input") as HTMLInputElement; colorInput.type = "color";
-      const cur = m.fallbackByType[t];
-      if (cur) colorInput.value = this.vec4ToHex(cur);
-      row.appendChild(colorInput);
-      const set = el("button", "inspector-small-btn", "Set") as HTMLButtonElement;
-      set.addEventListener("click", () => { m.setFallbackByType(t, this.hexToVec4(colorInput.value)); this.refresh(); });
-      row.appendChild(set);
-      types.appendChild(row);
-    }
-    container.appendChild(types);
+    // Note: type-level fallbacks removed. Use per-texture fallbacks above.
 
     parent.appendChild(container);
   }
@@ -281,18 +267,5 @@ export class Inspector {
     return v;
   }
 
-  private vec4ToHex(v: [number, number, number, number]) {
-    const r = Math.round(v[0] * 255).toString(16).padStart(2, '0');
-    const g = Math.round(v[1] * 255).toString(16).padStart(2, '0');
-    const b = Math.round(v[2] * 255).toString(16).padStart(2, '0');
-    return `#${r}${g}${b}`;
-  }
 
-  private hexToVec4(hex: string): [number, number, number, number] {
-    const h = hex.replace('#','');
-    const r = parseInt(h.substring(0,2),16)/255;
-    const g = parseInt(h.substring(2,4),16)/255;
-    const b = parseInt(h.substring(4,6),16)/255;
-    return [r,g,b,1.0];
-  }
 }

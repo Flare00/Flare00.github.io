@@ -34,4 +34,6 @@ export class Mesh implements Component {
       console.warn('Error disposing ModelGL', e);
     }
   }
+
+
 }

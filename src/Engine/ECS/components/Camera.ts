@@ -26,4 +26,22 @@ export class Camera implements Component {
   setActive(active: boolean) {
     this.active = active;
   }
+
+  // Metadata used by the inspector UI to render appropriate editors
+  static inspector = {
+    fov: {
+      type: 'number',
+      widget: 'slider',
+      min: 0,
+      max: 150,
+      step: 1,
+    },
+    aspect: {
+      type: 'number',
+      readonly: true,
+    },
+    near: { type: 'number', min: 0.001, max: 10, step: 0.001 },
+    far: { type: 'number', min: 1, max: 5000, step: 1 }
+  } as Record<string, any>;
+
 }

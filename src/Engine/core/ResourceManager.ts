@@ -4,6 +4,7 @@ import type { ShaderData } from "../loaders/ShaderLoader";
 import { ShaderProgram } from "../rendering/ShaderProgram";
 import { GLContext } from "../rendering/GLContext";
 import { Engine } from "./Engine";
+import { Vec4 } from "ts-gl-matrix";
 
 export class ResourceManager {
     private static texturePromises: Map<string, Promise<WebGLTexture | null>> = new Map();
@@ -43,7 +44,7 @@ export class ResourceManager {
         gl = GLContext.getGL(gl);
 
         type State = 'loading' | 'ready' | 'error';
-    const stateObj: { state: State, texture?: WebGLTexture | null, error?: any } = { state: 'loading' };
+        const stateObj: { state: State, texture?: WebGLTexture | null, error?: any } = { state: 'loading' };
 
         const p = this.loadTexture(url, gl).then(tex => {
             stateObj.state = 'ready';
@@ -142,7 +143,7 @@ export class ResourceManager {
      * Create or return a cached 1x1 RGBA texture filled with the given color.
      * Color is an array of four numbers in [0,1] representing RGBA.
      */
-    static getOrCreateColorTexture(color: [number, number, number, number], gl?: WebGL2RenderingContext | GLContext): WebGLTexture {
+    static getOrCreateColorTexture(color: Vec4, gl?: WebGL2RenderingContext | GLContext): WebGLTexture {
         gl = GLContext.getGL(gl);
         const key = this.colorKey(color);
         if (this.textureCache.has(key)) return this.textureCache.get(key)!;
@@ -170,12 +171,12 @@ export class ResourceManager {
         return tex;
     }
 
-    private static colorKey(color: [number, number, number, number]): string {
+    private static colorKey(color: Vec4): string {
         return `__color_${color.map(c => Math.round(c * 255)).join("_")}`;
     }
 
     /** Delete a previously created color texture (if exists) */
-    static deleteColorTexture(color: [number, number, number, number], gl?: WebGL2RenderingContext | GLContext): void {
+    static deleteColorTexture(color: Vec4, gl?: WebGL2RenderingContext | GLContext): void {
         gl = GLContext.getGL(gl);
         const key = this.colorKey(color);
         const tex = this.textureCache.get(key);

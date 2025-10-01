@@ -2,15 +2,15 @@ import type { ShaderProgram } from "../../rendering/ShaderProgram";
 import type { Component } from "../Component";
 import { ResourceManager } from "../../core/ResourceManager";
 import { GLContext } from "../../rendering/GLContext";
+import { Vec4 } from "ts-gl-matrix";
+
+export type TextureEntry = { url: string; fallback: Vec4 };
 
 export class Material implements Component {
   shader: ShaderProgram;
-  uniforms: Record<string, any> = {};
-  textures: Record<string, string> = {};
-  // fallbackColors stores vec4 colors (as [r,g,b,a] numbers 0..1) per sampler uniform name
-  fallbackColors: Record<string, [number, number, number, number]> = {};
-  // fallbackByType maps semantic type names (e.g. 'albedo','normal','metallic','roughness','ao') to a vec4 color
-  fallbackByType: Record<string, [number, number, number, number]> = {};
+  uniforms: { [key: string]: any } = {};
+  // textures now store url and optional fallback color per sampler
+  textures: { [key: string]: TextureEntry } = {};
 
   constructor(shader: ShaderProgram) {
     this.shader = shader;
@@ -21,22 +21,22 @@ export class Material implements Component {
   }
 
   setTextureUniform(name: string, url: string) {
-    this.textures[name] = url;
+    this.textures[name] = { url, fallback: Vec4.fromValues(1, 1, 1, 1) };
   }
 
   /**
    * Set a fallback 1x1 color for a sampler uniform. Color is a vec4 in 0..1
    */
-  setFallbackTexture(name: string, color: [number, number, number, number]) {
-    this.fallbackColors[name] = color;
+  setFallback(name: string, color: [number, number, number, number] | Vec4) {
+    const vec = Array.isArray(color) ? Vec4.fromValues(...color) : color;
+    const texture = this.textures[name] ?? { url: "", fallback: vec };
+    this.textures[name] = texture;
   }
 
   /**
    * Set a fallback color by semantic type (e.g. 'albedo','normal','metallic','roughness','ao')
    */
-  setFallbackByType(type: string, color: [number, number, number, number]) {
-    this.fallbackByType[type] = color;
-  }
+  // NOTE: fallbackByType removed in favor of per-texture fallback. Keep infer helper for compatibility.
 
   /**
    * Infer a semantic type from a sampler uniform name.
@@ -67,8 +67,9 @@ export class Material implements Component {
 
     // Bind textures to successive texture units
     let unit = 0;
-    for (const [name, url] of Object.entries(this.textures)) {
-      const tex = ResourceManager.getTexture(url);
+    for (const [name, entry] of Object.entries(this.textures)) {
+      const url = entry.url;
+      const tex = url ? ResourceManager.getTexture(url) : undefined;
       if (tex) {
         gl.activeTexture(gl.TEXTURE0 + unit);
         gl.bindTexture(gl.TEXTURE_2D, tex);
@@ -76,16 +77,12 @@ export class Material implements Component {
         this.shader.setUniform(name, unit);
         unit++;
       } else {
-        // trigger async load but do not await
-        ResourceManager.loadTexture(url, gl).catch((e) => console.warn("Texture load failed", url, e));
-        // prefer per-uniform fallback, otherwise try a semantic type fallback
-        const fb = this.fallbackColors[name] ?? (() => {
-          const t = this.inferTypeFromName(name);
-          return t ? this.fallbackByType[t] : undefined;
-        })();
-        if (fb) {
+        // trigger async load if we have a url but do not await
+        if (url) ResourceManager.loadTexture(url, gl).catch((e) => console.warn("Texture load failed", url, e));
+
+        if (entry.fallback) {
           try {
-            const colorTex = ResourceManager.getOrCreateColorTexture(fb, gl);
+            const colorTex = ResourceManager.getOrCreateColorTexture(entry.fallback, gl);
             gl.activeTexture(gl.TEXTURE0 + unit);
             gl.bindTexture(gl.TEXTURE_2D, colorTex);
             this.shader.setUniform(name, unit);
@@ -97,4 +94,10 @@ export class Material implements Component {
       }
     }
   }
+
+  static inspector = {
+    textures: {
+      type: 'textures',
+    }
+  } as Record<string, any>;
 }
